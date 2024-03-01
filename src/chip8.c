@@ -26,6 +26,27 @@ typedef enum {
   PAUSED,
 } emulator_state_t;
 
+// CHIP8 Instruction
+// CHIP8 instructions are big endian, while x86 architecture is little endian
+typedef union {
+  struct {
+    uint16_t NNN : 12; // 12-bit address/constant
+    uint8_t MSN : 4;   // Most Significant Nibble
+  } nnn;
+  struct {
+    uint8_t NN : 8;  // 8-bit constant
+    uint8_t X : 4;   // 4-bit register
+    uint8_t MSN : 4; // Most Significant Nibble
+  } xnn;
+  struct {
+    uint8_t N : 4;   // 4-bit constant
+    uint8_t Y : 4;   // 4-bit register
+    uint8_t X : 4;   // 4-bit register
+    uint8_t MSN : 4; // Most Significant Nibble
+  } xyn;
+  uint16_t opcode;
+} instruction_t;
+
 // CHIP8 machine
 typedef struct {
   emulator_state_t state;
@@ -175,7 +196,43 @@ void handle_input(chip8_t *chip8) {
   }
 }
 
-void emulate_instruction(chip8_t *chip8) {}
+void emulate_instruction(chip8_t *chip8) {
+  instruction_t inst;
+  inst.opcode = (chip8->ram[chip8->PC] << 8) | chip8->ram[chip8->PC + 1];
+  chip8->PC += 2; // Pre-increment program counter
+
+  switch (inst.nnn.MSN) {
+  case 0x0:
+    if (inst.nnn.NNN == 0xE0) {
+      // 0x00E0: clear the screen
+      memset(&chip8->display[0], false, sizeof chip8->display);
+    } else {
+      // 0x00EE: return from subrutine
+    }
+    break;
+  case 0x1:
+    // 0x1NNN: jump
+    chip8->PC = inst.nnn.NNN;
+    break;
+  case 0x6:
+    // 0x6XNN: set VX to NN
+    chip8->V[inst.xnn.X] = inst.xnn.NN;
+    break;
+  case 0x7:
+    // 0x7XNN: add NN to VX
+    chip8->V[inst.xnn.X] += inst.xnn.NN;
+    break;
+  case 0xA:
+    // 0xANNN: set I to the address NNN
+    chip8->I = inst.nnn.NNN;
+    break;
+  case 0xD:
+    // 0xDXYN: draw a sprite
+    break;
+  default:
+    break; // Unimplemented or invalid opcode
+  }
+}
 
 int main(int argc, char *argv[]) {
   if (argc < 2) {
