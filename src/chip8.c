@@ -310,9 +310,9 @@ int main(int argc, char *argv[]) {
     exit(EXIT_FAILURE);
   }
 
-  sdl_t sdl;
-  config_t config;
-  chip8_t chip8;
+  sdl_t sdl = {0};
+  config_t config = {0};
+  chip8_t chip8 = {0};
 
   // Initialize emulator configuration
   config = (config_t){
