@@ -17,6 +17,7 @@ typedef struct {
   uint32_t scale_factor;
   uint32_t fg_color;
   uint32_t bg_color;
+  bool pixel_outline;
 } config_t;
 
 // Emulator states
@@ -152,6 +153,44 @@ void clear_screen(const sdl_t sdl, const config_t config) {
   SDL_RenderClear(sdl.renderer);
 }
 
+void update_screen(const sdl_t sdl, const config_t config,
+                   const chip8_t chip8) {
+  SDL_Rect rect = {
+      .x = 0, .y = 0, .w = config.scale_factor, .h = config.scale_factor};
+
+  // Get color values
+  const uint8_t bg_r = (config.bg_color >> 24) & 0xFF;
+  const uint8_t bg_g = (config.bg_color >> 16) & 0xFF;
+  const uint8_t bg_b = (config.bg_color >> 8) & 0xFF;
+  const uint8_t bg_a = (config.bg_color >> 0) & 0xFF;
+
+  const uint8_t fg_r = (config.fg_color >> 24) & 0xFF;
+  const uint8_t fg_g = (config.fg_color >> 16) & 0xFF;
+  const uint8_t fg_b = (config.fg_color >> 8) & 0xFF;
+  const uint8_t fg_a = (config.fg_color >> 0) & 0xFF;
+
+  // Loop through display pixels
+  for (uint32_t i = 0; i < sizeof chip8.display; i++) {
+    rect.x = (i % config.window_width) * config.scale_factor;
+    rect.y = (i / config.window_width) * config.scale_factor;
+
+    if (chip8.display[i]) {
+      SDL_SetRenderDrawColor(sdl.renderer, fg_r, fg_g, fg_b, fg_a);
+      SDL_RenderFillRect(sdl.renderer, &rect);
+
+      // Draw border around active pixel
+      if (config.pixel_outline) {
+        SDL_SetRenderDrawColor(sdl.renderer, bg_r, bg_g, bg_b, bg_a);
+        SDL_RenderDrawRect(sdl.renderer, &rect);
+      }
+    } else {
+      SDL_SetRenderDrawColor(sdl.renderer, bg_r, bg_g, bg_b, bg_a);
+      SDL_RenderFillRect(sdl.renderer, &rect);
+    }
+  }
+  SDL_RenderPresent(sdl.renderer);
+}
+
 int quit_sdl(const sdl_t sdl) {
   SDL_DestroyRenderer(sdl.renderer);
   SDL_DestroyWindow(sdl.window);
@@ -196,10 +235,12 @@ void handle_input(chip8_t *chip8) {
   }
 }
 
-void emulate_instruction(chip8_t *chip8) {
+void emulate_instruction(chip8_t *chip8, const config_t config) {
   instruction_t inst;
   inst.opcode = (chip8->ram[chip8->PC] << 8) | chip8->ram[chip8->PC + 1];
   chip8->PC += 2; // Pre-increment program counter
+
+  printf("%04X\n", inst.opcode);
 
   switch (inst.nnn.MSN) {
   case 0x0:
@@ -226,9 +267,38 @@ void emulate_instruction(chip8_t *chip8) {
     // 0xANNN: set I to the address NNN
     chip8->I = inst.nnn.NNN;
     break;
-  case 0xD:
-    // 0xDXYN: draw a sprite
+  case 0xD: { // 0xDXYN: draw a sprite
+    uint16_t x, y;
+    chip8->V[0xF] = 0;
+    y = chip8->V[inst.xyn.Y] % config.window_height;
+
+    // Loop over N rows of the sprite
+    for (int i = 0; i < inst.xyn.N; i++) {
+      x = chip8->V[inst.xyn.X] % config.window_width;
+      uint8_t byte = chip8->ram[chip8->I + i];
+
+      for (int j = 0; j < 8; j++) {
+        const bool bit = byte & (1 << (7 - j));
+        bool *pixel = &chip8->display[y * config.window_width + x];
+
+        // If sprite bit and display pixel are on, set carry flag
+        if (bit && *pixel) {
+          chip8->V[0xF] = 1;
+        }
+
+        // XOR display pixel
+        *pixel ^= bit;
+
+        // Stop drawing at the right edge of the screen
+        if (++x >= config.window_width)
+          break;
+      }
+      // Stop drawing at the bottom of the screen
+      if (++y >= config.window_height)
+        break;
+    }
     break;
+  }
   default:
     break; // Unimplemented or invalid opcode
   }
@@ -251,6 +321,7 @@ int main(int argc, char *argv[]) {
       .scale_factor = 20,
       .fg_color = 0xFFFFFFFF,
       .bg_color = 0x000000FF,
+      .pixel_outline = true,
   };
 
   // Initialize SDL
@@ -274,11 +345,11 @@ int main(int argc, char *argv[]) {
       continue;
 
     // Emulate CHIP8 instructions
-    emulate_instruction(&chip8);
+    emulate_instruction(&chip8, config);
 
     SDL_Delay(16);
 
-    SDL_RenderPresent(sdl.renderer);
+    update_screen(sdl, config, chip8);
   }
 
   quit_sdl(sdl);
