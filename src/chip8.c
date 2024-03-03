@@ -74,10 +74,24 @@ void emulate_instruction(chip8_t *chip8, const config_t config) {
       memset(&chip8->display[0], false, sizeof chip8->display);
     } else {
       // 0x00EE: return from subrutine
+      if (chip8->SP == 0) {
+        printf("Error: trying to pop from empty stack\n");
+      }
+      chip8->PC = chip8->stack[--chip8->SP];
     }
     break;
   case 0x1:
     // 0x1NNN: jump
+    chip8->PC = inst.nnn.NNN;
+    break;
+  case 0x2:
+    // 2NNN: call subroutine at NNN
+    // Push current PC to the stack
+    chip8->stack[chip8->SP++] = chip8->PC;
+    if (chip8->SP > 12) {
+      printf("Error: stack overflow\n");
+    }
+    // Jump to NNN
     chip8->PC = inst.nnn.NNN;
     break;
   case 0x3:

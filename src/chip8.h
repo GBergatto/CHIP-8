@@ -47,6 +47,7 @@ typedef struct {
   uint8_t ram[4096];
   bool display[64 * 32]; // Default resolution
   uint16_t stack[12];    // Stack
+  uint8_t SP;            // Stack pointer (not a register)
   uint16_t I;            // Index register
   uint16_t PC;           // Program counter
   uint8_t V[16];         // Data registers
