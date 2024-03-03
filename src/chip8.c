@@ -80,6 +80,24 @@ void emulate_instruction(chip8_t *chip8, const config_t config) {
     // 0x1NNN: jump
     chip8->PC = inst.nnn.NNN;
     break;
+  case 0x3:
+    // 0x3XNN: skip the next instruction if VX equals NN
+    if (chip8->V[inst.xnn.X] == inst.xnn.NN) {
+      chip8->PC += 2;
+    }
+    break;
+  case 0x4:
+    // 0x4XNN: skip the next instruction if VX does not equal NN
+    if (chip8->V[inst.xnn.X] != inst.xnn.NN) {
+      chip8->PC += 2;
+    }
+    break;
+  case 0x5:
+    // 0x5XYN: skip the next instruction if VX equals VY
+    if (chip8->V[inst.xyn.X] == chip8->V[inst.xyn.Y]) {
+      chip8->PC += 2;
+    }
+    break;
   case 0x6:
     // 0x6XNN: set VX to NN
     chip8->V[inst.xnn.X] = inst.xnn.NN;
@@ -87,6 +105,12 @@ void emulate_instruction(chip8_t *chip8, const config_t config) {
   case 0x7:
     // 0x7XNN: add NN to VX
     chip8->V[inst.xnn.X] += inst.xnn.NN;
+    break;
+  case 0x9:
+    // 0x9XYN: skip the next instruction if VX does not equal VY
+    if (chip8->V[inst.xyn.X] != chip8->V[inst.xyn.Y]) {
+      chip8->PC += 2;
+    }
     break;
   case 0xA:
     // 0xANNN: set I to the address NNN
@@ -125,6 +149,7 @@ void emulate_instruction(chip8_t *chip8, const config_t config) {
     break;
   }
   default:
+    printf("Unimplemented\n");
     break; // Unimplemented or invalid opcode
   }
 }
