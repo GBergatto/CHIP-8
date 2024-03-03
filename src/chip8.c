@@ -117,8 +117,75 @@ void emulate_instruction(chip8_t *chip8, const config_t config) {
     chip8->V[inst.xnn.X] = inst.xnn.NN;
     break;
   case 0x7:
-    // 0x7XNN: add NN to VX
+    // 0x7XNN: add NN to VX (carry flag is not changed)
     chip8->V[inst.xnn.X] += inst.xnn.NN;
+    break;
+  case 0x8:
+    switch (inst.xyn.N) {
+    case 0x0:
+      // 0x8XY0: set VX to the value of VY
+      chip8->V[inst.xyn.X] = chip8->V[inst.xyn.Y];
+      break;
+    case 0x1:
+      // 0x8XY1: set VX to VX bitwise OR VY
+      chip8->V[inst.xyn.X] |= chip8->V[inst.xyn.Y];
+      break;
+    case 0x2:
+      // 0x8XY2: set VX to VX bitwise AND VY
+      chip8->V[inst.xyn.X] &= chip8->V[inst.xyn.Y];
+      break;
+    case 0x3:
+      // 0x8XY3: set VX to VX bitwise XOR VY
+      chip8->V[inst.xyn.X] ^= chip8->V[inst.xyn.Y];
+      break;
+    case 0x4:
+      // 0x8XY4: add VY to VX (with carry flag)
+      if ((uint16_t)(chip8->V[inst.xyn.X] + chip8->V[inst.xyn.Y]) > 255) {
+        chip8->V[0xF] = 1;
+      } else {
+        chip8->V[0xF] = 0;
+      }
+      chip8->V[inst.xyn.X] += chip8->V[inst.xyn.Y];
+      break;
+    case 0x5:
+      // 0x8XY5: VY is subtracted from VX
+      if (chip8->V[inst.xyn.X] >= chip8->V[inst.xyn.Y]) {
+        chip8->V[0xF] = 1; // no underflow
+      } else {
+        chip8->V[0xF] = 0; // underflow
+      }
+      chip8->V[inst.xyn.X] -= chip8->V[inst.xyn.Y];
+      break;
+    case 0x6:
+      // 0x8XY6: right shift VX
+      // Shift VY for original interpreter, ignore VY for CHIP-48 and SUPER-CHIP
+      if (!config.shift_VX_only) {
+        chip8->V[inst.xyn.X] = chip8->V[inst.xyn.Y];
+      }
+      // Store the least significant bit of VX in VF
+      chip8->V[0xF] = chip8->V[inst.xyn.X] & 1;
+      chip8->V[inst.xyn.X] >>= 1;
+      break;
+    case 0x7:
+      // 0x8XY7: Sets VX to VY minus VX
+      if (chip8->V[inst.xyn.Y] >= chip8->V[inst.xyn.X]) {
+        chip8->V[0xF] = 1; // no underflow
+      } else {
+        chip8->V[0xF] = 0; // underflow
+      }
+      chip8->V[inst.xyn.X] = chip8->V[inst.xyn.Y] - chip8->V[inst.xyn.X];
+      break;
+    case 0xE:
+      // 0x8XYE: left shift VX
+      // Shift VY for original interpreter, ignore VY for CHIP-48 and SUPER-CHIP
+      if (!config.shift_VX_only) {
+        chip8->V[inst.xyn.X] = chip8->V[inst.xyn.Y];
+      }
+      // Store the most significant bit of VX in VF
+      chip8->V[0xF] = (chip8->V[inst.xyn.X] & (1 << 7)) >> 7;
+      chip8->V[inst.xyn.X] <<= 1;
+      break;
+    }
     break;
   case 0x9:
     // 0x9XYN: skip the next instruction if VX does not equal VY

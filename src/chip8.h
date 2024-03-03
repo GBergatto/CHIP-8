@@ -10,7 +10,8 @@ typedef struct {
   uint32_t scale_factor;
   uint32_t fg_color;
   uint32_t bg_color;
-  bool pixel_outline;
+  bool pixel_outline; // Draw outline around active pixels
+  bool shift_VX_only; // CHIP-48 and SUPER-CHIP behavior in bit shifting
 } config_t;
 
 // Emulator states

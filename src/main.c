@@ -19,6 +19,7 @@ int main(int argc, char *argv[]) {
       .fg_color = 0xFFFFFFFF,
       .bg_color = 0x000000FF,
       .pixel_outline = true,
+      .shift_VX_only = false,
   };
 
   // Initialize SDL
