@@ -12,6 +12,7 @@ typedef struct {
   uint32_t bg_color;
   bool pixel_outline; // Draw outline around active pixels
   bool shift_VX_only; // CHIP-48 and SUPER-CHIP behavior in bit shifting
+  bool use_BXNN;      // Replace BXNN with BNNN for CHIP-48 and SUPER-CHIP
 } config_t;
 
 // Emulator states

@@ -197,6 +197,15 @@ void emulate_instruction(chip8_t *chip8, const config_t config) {
     // 0xANNN: set I to the address NNN
     chip8->I = inst.nnn.NNN;
     break;
+  case 0xB:
+    if (config.use_BXNN) {
+      // BXNN: jump to the address XNN plus VX (CHIP-48 and SUPER-CHIP)
+      chip8->PC = inst.nnn.NNN + chip8->V[inst.xnn.X];
+    } else {
+      // BNNN: jump to the address NNN plus V0 (original behavior)
+      chip8->PC = inst.nnn.NNN + chip8->V[0];
+    }
+    break;
   case 0xD: { // 0xDXYN: draw a sprite
     uint16_t x, y;
     chip8->V[0xF] = 0;
