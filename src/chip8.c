@@ -1,5 +1,7 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 #include "chip8.h"
 
@@ -26,6 +28,9 @@ int init_chip8(chip8_t *chip8, const char *rom_name) {
 
   // Load font
   memcpy(&chip8->ram[0x050], font, sizeof(font));
+
+  // Seed random number generator
+  srand(time(NULL));
 
   // Open ROM file
   FILE *rom_file = fopen(rom_name, "rb");
@@ -205,6 +210,9 @@ void emulate_instruction(chip8_t *chip8, const config_t config) {
       // BNNN: jump to the address NNN plus V0 (original behavior)
       chip8->PC = inst.nnn.NNN + chip8->V[0];
     }
+    break;
+  case 0xC:
+    chip8->V[inst.xnn.X] = (rand() % 256) & inst.xnn.NN;
     break;
   case 0xD: { // 0xDXYN: draw a sprite
     uint16_t x, y;
