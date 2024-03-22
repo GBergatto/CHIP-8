@@ -246,6 +246,89 @@ void emulate_instruction(chip8_t *chip8, const config_t config) {
     }
     break;
   }
+  case 0xE:
+    switch (inst.xnn.NN) {
+    case 0x9E:
+      // 0xEX9E: skip instruction if key in VX is pressed
+      if (chip8->keypad[chip8->V[inst.xnn.X]]) {
+        chip8->PC += 2;
+      }
+      break;
+    case 0xA1:
+      // 0xEXA1: skip instruction if key in VX is not pressed
+      if (!chip8->keypad[chip8->V[inst.xnn.X]]) {
+        chip8->PC += 2;
+      }
+      break;
+    default:
+      break;
+    }
+    break;
+  case 0xF:
+    switch (inst.xnn.NN) {
+    case 0x07:
+      // 0xFX07: set VX to the value of the delay timer
+      chip8->V[inst.xnn.X] = chip8->delay;
+      break;
+    case 0x0A: {
+      // 0xFX0A: wait for key press then store it in VX
+      bool key_pressed = false;
+      for (uint8_t i = 0; i < sizeof chip8->keypad && !key_pressed; i++) {
+        if (chip8->keypad[i]) {
+          chip8->V[inst.xnn.X] = i;
+          key_pressed = true;
+        }
+      }
+
+      // If no key was pressed, run the same instruction again
+      if (!key_pressed) {
+        chip8->PC -= 2;
+      }
+      break;
+    }
+    case 0x15:
+      // 0xFX15: set the delay timer to VX
+      chip8->delay = chip8->V[inst.xnn.X];
+      break;
+    case 0x18:
+      // 0xFX18: set the sound timer to VX
+      chip8->sound = chip8->V[inst.xnn.X];
+      break;
+    case 0x1E:
+      // 0xFX1E: add VX to I (carry flag VF is not affected)
+      chip8->I += chip8->V[inst.xnn.X];
+      break;
+    case 0x29:
+      // 0xFX29: set I to the location of the sprite for the character in VX
+      chip8->I = chip8->V[inst.xnn.X] * 5;
+      break;
+    case 0x33: {
+      // 0xFX33:
+      uint8_t bcd = chip8->V[inst.xnn.X];
+      chip8->ram[chip8->I + 2] = bcd % 10;
+      bcd /= 10;
+      chip8->ram[chip8->I + 1] = bcd % 10;
+      bcd /= 10;
+      chip8->ram[chip8->I] = bcd % 10;
+      break;
+    }
+    case 0x55:
+      // 0xFX55: store from V0 to VX (included) in memory, starting at address I
+      for (uint8_t i = 0; i <= inst.xnn.X; i++) {
+        chip8->ram[chip8->I + i] = chip8->V[i];
+      }
+      break;
+    case 0x65:
+      // 0xFX65: fill from V0 to VX (included) with values from memory, starting
+      // at address I
+      for (uint8_t i = 0; i <= inst.xnn.X; i++) {
+        chip8->V[i] = chip8->ram[chip8->I + i];
+      }
+      break;
+    default:
+      break;
+    }
+    break;
   default:
     printf("Unimplemented\n");
     break; // Unimplemented or invalid opcode
