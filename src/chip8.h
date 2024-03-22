@@ -10,9 +10,10 @@ typedef struct {
   uint32_t scale_factor;
   uint32_t fg_color;
   uint32_t bg_color;
-  bool pixel_outline; // Draw outline around active pixels
-  bool shift_VX_only; // CHIP-48 and SUPER-CHIP behavior in bit shifting
-  bool use_BXNN;      // Replace BXNN with BNNN for CHIP-48 and SUPER-CHIP
+  bool pixel_outline;     // Draw outline around active pixels
+  bool shift_VX_only;     // CHIP-48 and SUPER-CHIP behavior in bit shifting
+  bool use_BXNN;          // Replace BXNN with BNNN for CHIP-48 and SUPER-CHIP
+  uint32_t insts_per_sec; // Clock rate
 } config_t;
 
 // Emulator states

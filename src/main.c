@@ -21,6 +21,7 @@ int main(int argc, char *argv[]) {
       .pixel_outline = true,
       .shift_VX_only = false,
       .use_BXNN = false,
+      .insts_per_sec = 500,
   };
 
   // Initialize SDL
@@ -43,12 +44,21 @@ int main(int argc, char *argv[]) {
     if (chip8.state == PAUSED)
       continue;
 
-    // Emulate CHIP8 instructions
-    emulate_instruction(&chip8, config);
+    const uint64_t start_time = SDL_GetPerformanceCounter();
 
-    SDL_Delay(16);
+    // Emulate CHIP8 instructions
+    for (uint32_t i = 0; i < config.insts_per_sec / 60; i++) {
+      emulate_instruction(&chip8, config);
+    }
+
+    const uint64_t end_time = SDL_GetPerformanceCounter();
+    double time_elapsed = ((double)(end_time - start_time) / 1000) / SDL_GetPerformanceFrequency();
+
+    // Run at approximately 60Hz
+    SDL_Delay((16.67f > time_elapsed) ? 16.67f - time_elapsed : 0);
 
     update_screen(sdl, config, chip8);
+    update_timers(&chip8);
   }
 
   quit_sdl(sdl);

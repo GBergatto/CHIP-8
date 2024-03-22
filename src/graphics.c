@@ -73,6 +73,19 @@ void update_screen(const sdl_t sdl, const config_t config,
   SDL_RenderPresent(sdl.renderer);
 }
 
+void update_timers(chip8_t *chip8) {
+  if (chip8->delay > 0) {
+    chip8->delay--;
+  }
+
+  if (chip8->sound > 0) {
+    chip8->sound--;
+    // TODO: play audio
+  } else {
+    // TODO: stop playing audio
+  }
+}
+
 int quit_sdl(const sdl_t sdl) {
   SDL_DestroyRenderer(sdl.renderer);
   SDL_DestroyWindow(sdl.window);
