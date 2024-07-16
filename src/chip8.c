@@ -90,7 +90,7 @@ void emulate_instruction(chip8_t *chip8, const config_t config) {
     chip8->PC = inst.nnn.NNN;
     break;
   case 0x2:
-    // 2NNN: call subroutine at NNN
+    // 0x2NNN: call subroutine at NNN
     // Push current PC to the stack
     chip8->stack[chip8->SP++] = chip8->PC;
     if (chip8->SP > 12) {
