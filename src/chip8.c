@@ -26,8 +26,8 @@ int init_chip8(chip8_t *chip8, const char *rom_name) {
       0xF0, 0x80, 0xF0, 0x80, 0x80  // F
   };
 
-  // Load font
-  memcpy(&chip8->ram[0x050], font, sizeof(font));
+  // Load font (by tradition, put it at 0x50–0x9F)
+  memcpy(&chip8->ram[0x50], font, sizeof(font));
 
   // Seed random number generator
   srand(time(NULL));
@@ -300,7 +300,7 @@ void emulate_instruction(chip8_t *chip8, const config_t config) {
       break;
     case 0x29:
       // 0xFX29: set I to the location of the sprite for the character in VX
-      chip8->I = chip8->V[inst.xnn.X] * 5;
+      chip8->I = chip8->V[inst.xnn.X] * 5 + 0x50;
       break;
     case 0x33: {
       // 0xFX33:
