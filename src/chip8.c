@@ -5,6 +5,16 @@
 
 #include "chip8.h"
 
+#define DEBUG 1
+
+#if DEBUG
+#define debug_print(...) printf(__VA_ARGS__)
+#else
+#define DEBUG_PRINTF(...)                                                      \
+  do {                                                                         \
+  } while (0)
+#endif
+
 int init_chip8(chip8_t *chip8, const char *rom_name) {
   const uint32_t entrypoint = 0x200;
   const uint8_t font[] = {
@@ -70,24 +80,32 @@ void emulate_instruction(chip8_t *chip8, const config_t config) {
   inst.opcode = (chip8->ram[chip8->PC] << 8) | chip8->ram[chip8->PC + 1];
   chip8->PC += 2; // Pre-increment program counter
 
-  printf("%04X\n", inst.opcode);
+#if DEBUG
+  printf("%04X ", inst.opcode);
+#endif /* ifdef DEBUG */
 
   switch (inst.nnn.MSN) {
   case 0x0:
     if (inst.nnn.NNN == 0xE0) {
       // 0x00E0: clear the screen
       memset(&chip8->display[0], false, sizeof chip8->display);
-    } else {
+      debug_print("Clear screen %d\n", inst.nnn.NNN);
+    } else if (inst.nnn.NNN == 0xEE) {
       // 0x00EE: return from subrutine
       if (chip8->SP == 0) {
         printf("Error: trying to pop from empty stack\n");
       }
       chip8->PC = chip8->stack[--chip8->SP];
+      debug_print("Return from subroutine. New PC = %d\n", chip8->PC);
+    } else {
+      printf("Unimplemented\n");
+      // Maybe 0xNNN for calling machine code routine for RCA1802
     }
     break;
   case 0x1:
     // 0x1NNN: jump
     chip8->PC = inst.nnn.NNN;
+    debug_print("Jump to %d\n", chip8->PC);
     break;
   case 0x2:
     // 0x2NNN: call subroutine at NNN
@@ -98,50 +116,68 @@ void emulate_instruction(chip8_t *chip8, const config_t config) {
     }
     // Jump to NNN
     chip8->PC = inst.nnn.NNN;
+    debug_print("Call subrouting at %d\n", chip8->PC);
     break;
   case 0x3:
     // 0x3XNN: skip the next instruction if VX equals NN
     if (chip8->V[inst.xnn.X] == inst.xnn.NN) {
       chip8->PC += 2;
     }
+    debug_print("if %d==%d, skip next instruction\n", chip8->V[inst.xnn.X],
+                inst.xnn.NN);
     break;
   case 0x4:
     // 0x4XNN: skip the next instruction if VX does not equal NN
     if (chip8->V[inst.xnn.X] != inst.xnn.NN) {
       chip8->PC += 2;
     }
+    debug_print("if %d!=%d, skip next instruction\n", chip8->V[inst.xnn.X],
+                inst.xnn.NN);
     break;
   case 0x5:
     // 0x5XYN: skip the next instruction if VX equals VY
     if (chip8->V[inst.xyn.X] == chip8->V[inst.xyn.Y]) {
       chip8->PC += 2;
     }
+    debug_print("if %d==%d, skip next instruction\n", chip8->V[inst.xnn.X],
+                chip8->V[inst.xyn.Y]);
     break;
   case 0x6:
     // 0x6XNN: set VX to NN
     chip8->V[inst.xnn.X] = inst.xnn.NN;
+    debug_print("Set V%d to %d\n", inst.xnn.X, inst.xnn.NN);
     break;
   case 0x7:
     // 0x7XNN: add NN to VX (carry flag is not changed)
     chip8->V[inst.xnn.X] += inst.xnn.NN;
+    debug_print("V%d + %d = %d\n", inst.xnn.X, inst.xnn.NN,
+                chip8->V[inst.xnn.X]);
     break;
   case 0x8:
     switch (inst.xyn.N) {
     case 0x0:
       // 0x8XY0: set VX to the value of VY
       chip8->V[inst.xyn.X] = chip8->V[inst.xyn.Y];
+      debug_print("Set V%d = V%d = %d\n", inst.xyn.X, inst.xyn.Y,
+                  chip8->V[inst.xyn.X]);
       break;
     case 0x1:
       // 0x8XY1: set VX to VX bitwise OR VY
       chip8->V[inst.xyn.X] |= chip8->V[inst.xyn.Y];
+      debug_print("Set V%d |= V%d = %d\n", inst.xyn.X, inst.xyn.Y,
+                  chip8->V[inst.xyn.X]);
       break;
     case 0x2:
       // 0x8XY2: set VX to VX bitwise AND VY
       chip8->V[inst.xyn.X] &= chip8->V[inst.xyn.Y];
+      debug_print("Set V%d &= V%d = %d\n", inst.xyn.X, inst.xyn.Y,
+                  chip8->V[inst.xyn.X]);
       break;
     case 0x3:
       // 0x8XY3: set VX to VX bitwise XOR VY
       chip8->V[inst.xyn.X] ^= chip8->V[inst.xyn.Y];
+      debug_print("Set V%d ^= V%d = %d\n", inst.xyn.X, inst.xyn.Y,
+                  chip8->V[inst.xyn.X]);
       break;
     case 0x4:
       // 0x8XY4: add VY to VX (with carry flag)
@@ -151,6 +187,8 @@ void emulate_instruction(chip8_t *chip8, const config_t config) {
         chip8->V[0xF] = 0;
       }
       chip8->V[inst.xyn.X] += chip8->V[inst.xyn.Y];
+      debug_print("V%d += V%d = %d with overflow VF=%d\n", inst.xyn.X,
+                  inst.xyn.Y, chip8->V[inst.xyn.X], chip8->V[0xF]);
       break;
     case 0x5:
       // 0x8XY5: VY is subtracted from VX
@@ -160,16 +198,20 @@ void emulate_instruction(chip8_t *chip8, const config_t config) {
         chip8->V[0xF] = 0; // underflow
       }
       chip8->V[inst.xyn.X] -= chip8->V[inst.xyn.Y];
+      debug_print("V%d -= V%d = %d with underflow VF=%d\n", inst.xyn.X,
+                  inst.xyn.Y, chip8->V[inst.xyn.X], chip8->V[0xF]);
       break;
     case 0x6:
       // 0x8XY6: right shift VX
-      // Shift VY for original interpreter, ignore VY for CHIP-48 and SUPER-CHIP
+      // For the original chip-8 interpreter, shift VY and store it in VX
       if (!config.shift_VX_only) {
         chip8->V[inst.xyn.X] = chip8->V[inst.xyn.Y];
       }
       // Store the least significant bit of VX in VF
       chip8->V[0xF] = chip8->V[inst.xyn.X] & 1;
       chip8->V[inst.xyn.X] >>= 1;
+      debug_print("Right shift V%d = %02X. VF = %02X\n", inst.xyn.X,
+                  chip8->V[inst.xyn.X], chip8->V[0xF]);
       break;
     case 0x7:
       // 0x8XY7: Sets VX to VY minus VX
@@ -182,13 +224,15 @@ void emulate_instruction(chip8_t *chip8, const config_t config) {
       break;
     case 0xE:
       // 0x8XYE: left shift VX
-      // Shift VY for original interpreter, ignore VY for CHIP-48 and SUPER-CHIP
+      // For the original chip-8 interpreter, shift VY and store it in VX
       if (!config.shift_VX_only) {
         chip8->V[inst.xyn.X] = chip8->V[inst.xyn.Y];
       }
       // Store the most significant bit of VX in VF
       chip8->V[0xF] = (chip8->V[inst.xyn.X] & (1 << 7)) >> 7;
       chip8->V[inst.xyn.X] <<= 1;
+      debug_print("Left shift V%d = %d. VF = %d\n", inst.xyn.X,
+                  chip8->V[inst.xyn.X], chip8->V[0xF]);
       break;
     }
     break;
@@ -197,10 +241,13 @@ void emulate_instruction(chip8_t *chip8, const config_t config) {
     if (chip8->V[inst.xyn.X] != chip8->V[inst.xyn.Y]) {
       chip8->PC += 2;
     }
+    debug_print("if %d!=%d, skip next instruction\n", chip8->V[inst.xnn.X],
+                chip8->V[inst.xyn.Y]);
     break;
   case 0xA:
     // 0xANNN: set I to the address NNN
     chip8->I = inst.nnn.NNN;
+    debug_print("Set I = %d\n", inst.nnn.NNN);
     break;
   case 0xB:
     if (config.use_BXNN) {
@@ -244,6 +291,7 @@ void emulate_instruction(chip8_t *chip8, const config_t config) {
       if (++y >= config.window_height)
         break;
     }
+    debug_print("Draw sprite\n");
     break;
   }
   case 0xE:
@@ -301,6 +349,7 @@ void emulate_instruction(chip8_t *chip8, const config_t config) {
     case 0x29:
       // 0xFX29: set I to the location of the sprite for the character in VX
       chip8->I = chip8->V[inst.xnn.X] * 5 + 0x50;
+      debug_print("I = V%d*5 = 0x%04X\n", inst.xnn.X, chip8->I);
       break;
     case 0x33: {
       // 0xFX33:
