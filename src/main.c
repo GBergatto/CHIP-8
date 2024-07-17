@@ -52,7 +52,7 @@ int main(int argc, char *argv[]) {
     }
 
     const uint64_t end_time = SDL_GetPerformanceCounter();
-    double time_elapsed = ((double)(end_time - start_time) / 1000) / SDL_GetPerformanceFrequency();
+    double time_elapsed = ((double)(end_time - start_time) * 1000) / SDL_GetPerformanceFrequency();
 
     // Run at approximately 60Hz
     SDL_Delay((16.67f > time_elapsed) ? 16.67f - time_elapsed : 0);
