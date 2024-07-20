@@ -14,6 +14,9 @@ typedef struct {
   bool shift_VX_only;     // CHIP-48 and SUPER-CHIP behavior in bit shifting
   bool use_BXNN;          // Replace BXNN with BNNN for CHIP-48 and SUPER-CHIP
   uint32_t insts_per_sec; // Clock rate
+  uint32_t square_wave_freq;  // Frequency of square wave for audio
+  uint32_t audio_sample_rate; // Audio sample rate
+  uint16_t volume;            // Audio volume
 } config_t;
 
 // Emulator states

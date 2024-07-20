@@ -22,10 +22,13 @@ int main(int argc, char *argv[]) {
       .shift_VX_only = false,
       .use_BXNN = false,
       .insts_per_sec = 500,
+      .square_wave_freq = 440, // middle A
+      .audio_sample_rate = 44100,
+      .volume = 3000,
   };
 
   // Initialize SDL
-  if (init_sdl(&sdl, config) != 0) {
+  if (init_sdl(&sdl, &config) != 0) {
     exit(EXIT_FAILURE);
   }
 
@@ -52,13 +55,14 @@ int main(int argc, char *argv[]) {
     }
 
     const uint64_t end_time = SDL_GetPerformanceCounter();
-    double time_elapsed = ((double)(end_time - start_time) * 1000) / SDL_GetPerformanceFrequency();
+    double time_elapsed = ((double)(end_time - start_time) * 1000) /
+                          SDL_GetPerformanceFrequency();
 
     // Run at approximately 60Hz
     SDL_Delay((16.67f > time_elapsed) ? 16.67f - time_elapsed : 0);
 
     update_screen(sdl, config, chip8);
-    update_timers(&chip8);
+    update_timers(sdl, &chip8);
   }
 
   quit_sdl(sdl);

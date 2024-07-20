@@ -1,7 +1,24 @@
 #include "graphics.h"
 #include "chip8.h"
 
-int init_sdl(sdl_t *sdl, const config_t config) {
+void audio_callback(void *userdata, uint8_t *audiodata, int len) {
+  config_t *config = (config_t *)userdata;
+
+  int16_t *stream = (int16_t *)audiodata;
+  static uint32_t running_sample_index = 0;
+  const int32_t square_wave_period =
+      config->audio_sample_rate / config->square_wave_freq;
+  const int32_t half_square_wave_period = square_wave_period / 2;
+
+  // Len is in bytes. We're filling in 2 bytes at the time (int16_t)
+  for (int i = 0; i < (len / 2); i++) {
+    stream[i] = ((running_sample_index++ / half_square_wave_period) % 2)
+                    ? config->volume
+                    : -config->volume;
+  }
+}
+
+int init_sdl(sdl_t *sdl, config_t *config) {
   if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_TIMER) != 0) {
     fprintf(stderr, "SDL_Init Error: %s\n", SDL_GetError());
     return 1;
@@ -9,8 +26,8 @@ int init_sdl(sdl_t *sdl, const config_t config) {
 
   sdl->window = SDL_CreateWindow(
       "SDL Tutorial", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
-      config.window_width * config.scale_factor,
-      config.window_height * config.scale_factor, SDL_WINDOW_SHOWN);
+      config->window_width * config->scale_factor,
+      config->window_height * config->scale_factor, SDL_WINDOW_SHOWN);
   if (sdl->window == NULL) {
     fprintf(stderr, "SDL_CreateWindow Error: %s\n", SDL_GetError());
     return 1;
@@ -19,6 +36,28 @@ int init_sdl(sdl_t *sdl, const config_t config) {
   sdl->renderer = SDL_CreateRenderer(sdl->window, -1, SDL_RENDERER_ACCELERATED);
   if (sdl->renderer == NULL) {
     fprintf(stderr, "SDL_CreateRenderer Error: %s\n", SDL_GetError());
+    return 1;
+  }
+
+  // Init audio
+  sdl->desired = (SDL_AudioSpec){
+      .freq = config->audio_sample_rate,
+      .format = AUDIO_S16LSB,
+      .channels = 1,
+      .samples = 512,
+      .callback = audio_callback,
+      .userdata = config,
+  };
+
+  sdl->dev = SDL_OpenAudioDevice(NULL, 0, &sdl->desired, &sdl->obtained, 0);
+  if (sdl->dev == 0) {
+    fprintf(stderr, "SDL_OpenAudioDevice Error: %s\n", SDL_GetError());
+    return 1;
+  }
+
+  if ((sdl->desired.format != sdl->obtained.format) ||
+      (sdl->desired.channels != sdl->obtained.channels)) {
+    fprintf(stderr, "Could not get desired Audio Spec\n");
     return 1;
   }
 
@@ -73,7 +112,7 @@ void update_screen(const sdl_t sdl, const config_t config,
   SDL_RenderPresent(sdl.renderer);
 }
 
-void update_timers(chip8_t *chip8) {
+void update_timers(const sdl_t sdl, chip8_t *chip8) {
   if (chip8->delay > 0) {
     chip8->delay--;
   }
@@ -81,8 +120,10 @@ void update_timers(chip8_t *chip8) {
   if (chip8->sound > 0) {
     chip8->sound--;
     // TODO: play audio
+    SDL_PauseAudioDevice(sdl.dev, 0); // play sound
   } else {
     // TODO: stop playing audio
+    SDL_PauseAudioDevice(sdl.dev, 1); // pause sound
   }
 }
 
