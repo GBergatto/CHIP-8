@@ -13,6 +13,9 @@ BIN=$(BINDIR)/chip8
 
 all:$(BIN)
 
+debug: CFLAGS += -DDEBUG
+debug: $(BIN)
+
 $(BIN): $(OBJS)
 	$(CC) -o $@ $(OBJS) $(CFLAGS) -I$(INCLUDES) -L$(LIBS)
 

@@ -5,12 +5,10 @@
 
 #include "chip8.h"
 
-#define DEBUG 1
-
-#if DEBUG
+#ifdef DEBUG
 #define debug_print(...) printf(__VA_ARGS__)
 #else
-#define DEBUG_PRINTF(...)                                                      \
+#define debug_print(...)                                                       \
   do {                                                                         \
   } while (0)
 #endif
